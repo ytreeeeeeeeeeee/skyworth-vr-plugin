@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-feature android:name="android.software.vr.mode" android:required="false" />
+  <uses-feature android:name="android.software.vr.ignore.home" android:required="false" />
+
+  <application android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+    <activity
+      android:name="com.local.skyworth.testvr2021.SkyworthUnityActivity"
+      android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+      android:screenOrientation="portrait"
+      android:launchMode="singleTask"
+      android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|uiMode|mcc|mnc|locale|touchscreen|smallestScreenSize|layoutDirection|fontScale|density"
+      android:resizeableActivity="false"
+      android:exported="true"
+      android:enableVrMode="com.local.skyworth.testvr2021/com.ssnwt.sdk.VrListener">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+        <category android:name="com.google.intent.category.CARDBOARD" />
+      </intent-filter>
+      <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+    </activity>
+    <meta-data android:name="IMMERSIVE_MODE" android:value="true" />
+    <service
+      android:name="com.ssnwt.sdk.VrListener"
+      android:permission="android.permission.BIND_VR_LISTENER_SERVICE">
+      <intent-filter>
+        <action android:name="android.service.vr.VrListenerService" />
+      </intent-filter>
+    </service>
+  </application>
+</manifest>
