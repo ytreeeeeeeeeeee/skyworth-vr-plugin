@@ -1,5 +1,7 @@
 # Skyworth VR Bootstrap
 
+## THIS IS NOT AN OFFICIAL SKYWORTH PACKAGE
+
 Skyworth VR Bootstrap is a Unity Package Manager package for building VR
 applications for Skyworth S801-like Android VR devices.
 
