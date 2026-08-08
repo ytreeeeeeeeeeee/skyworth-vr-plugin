@@ -1,20 +1,11 @@
 # Skyworth VR Bootstrap
 
-Unity Package Manager package for Skyworth S801-like Android VR devices.
+Skyworth VR Bootstrap is a Unity Package Manager package for building VR
+applications for Skyworth S801-like Android VR devices.
 
-This is an adapter around official Skyworth native libraries. It keeps Unity
-rendering on the normal Android `SurfaceView` and uses the official
-`awGetOrientation(double, float*)` path for head orientation.
+The package prepares Android builds for the device runtime, creates a stereo VR
+view from a regular Unity camera, and applies headset orientation tracking at
+runtime.
 
-See `Documentation~/README.md` for setup and runtime notes.
-
-## Distribution Notice
-
-This package currently includes Skyworth native binaries:
-
-- `libatw_api.so`
-- `libavr_api.so`
-
-Before publishing this package publicly, confirm that you have redistribution
-rights for those binaries. If not, remove them from the public package and document
-where users should obtain the official SDK files.
+Use it when a Unity project needs to run on SkyworthVR-S801 hardware as a VR
+application rather than as a flat Android app.
