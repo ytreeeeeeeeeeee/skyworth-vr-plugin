@@ -2,7 +2,6 @@ using UnityEngine;
 
 public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 {
-    private const float EyeSeparationMeters = 0.064f;
     private const bool DiagnosticMonoRender = false;
     private Transform head;
     private Quaternion gyroReference;
@@ -64,8 +63,8 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         }
         else
         {
-            CreateEye(source, "Left", -EyeSeparationMeters * 0.5f, new Rect(0f, 0f, 0.5f, 1f));
-            CreateEye(source, "Right", EyeSeparationMeters * 0.5f, new Rect(0.5f, 0f, 0.5f, 1f));
+            CreateEye(source, "Left", -SkyworthVrConstants.EyeSeparationMeters * 0.5f, new Rect(0f, 0f, 0.5f, 1f));
+            CreateEye(source, "Right", SkyworthVrConstants.EyeSeparationMeters * 0.5f, new Rect(0.5f, 0f, 0.5f, 1f));
         }
 
         source.enabled = false;
