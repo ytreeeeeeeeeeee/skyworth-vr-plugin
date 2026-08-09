@@ -1,8 +1,8 @@
 {
-  "name": "com.local.skyworth-vr-bootstrap",
+  "name": "com.ytreeeeeeeeeeee.skyworth-vr-plugin",
   "version": "0.1.0",
-  "displayName": "Skyworth VR Bootstrap",
-  "description": "Unity Android bootstrap layer for Skyworth S801-like VR devices using official Skyworth orientation polling with Unity SurfaceView stereo fallback rendering.",
+  "displayName": "Skyworth VR Plugin",
+  "description": "Unity Android plugin for Skyworth S801-like VR devices.",
   "unity": "2021.3",
   "keywords": [
     "skyworth",

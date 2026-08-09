@@ -1,9 +1,15 @@
-# Skyworth VR Bootstrap
+# Skyworth VR Plugin
 
 ## THIS IS NOT AN OFFICIAL SKYWORTH PACKAGE
 
-Skyworth VR Bootstrap is a Unity Package Manager package for building VR
+Skyworth VR Plugin is a Unity Package Manager package for building VR
 applications for Skyworth S801-like Android VR devices.
+
+Tested environment:
+
+- Unity 2021.3 LTS
+- SkyworthVR-S801
+- Android 7.1.2 / API 25
 
 The package prepares Android builds for the device runtime, creates a stereo VR
 view from a regular Unity camera, and applies headset orientation tracking at

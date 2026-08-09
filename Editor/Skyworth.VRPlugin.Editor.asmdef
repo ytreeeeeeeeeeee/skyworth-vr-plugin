@@ -1,8 +1,12 @@
 {
-  "name": "Skyworth.VRBootstrap",
+  "name": "Skyworth.VRPlugin.Editor",
   "rootNamespace": "",
-  "references": [],
-  "includePlatforms": [],
+  "references": [
+    "Skyworth.VRPlugin"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": false,
