@@ -57,6 +57,8 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         head.SetPositionAndRotation(source.transform.position, source.transform.rotation);
         DontDestroyOnLoad(head.gameObject);
 
+        DisableAudioListener(source);
+
         if (DiagnosticMonoRender)
         {
             CreateEye(source, "Mono", 0f, new Rect(0f, 0f, 1f, 1f));
@@ -281,7 +283,16 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         var listener = eye.GetComponent<AudioListener>();
         if (listener != null)
         {
-            listener.enabled = eyeName == "Left";
+            listener.enabled = eyeName == "Left" || eyeName == "Mono";
+        }
+    }
+
+    private static void DisableAudioListener(Camera source)
+    {
+        var listener = source.GetComponent<AudioListener>();
+        if (listener != null)
+        {
+            listener.enabled = false;
         }
     }
 
