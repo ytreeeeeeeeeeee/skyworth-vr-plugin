@@ -1,15 +1,31 @@
 using UnityEngine;
-using UnityEngine.XR;
 
 public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 {
     private const float EyeSeparationMeters = 0.064f;
+    private const bool DiagnosticMonoRender = false;
     private Transform head;
     private Quaternion gyroReference;
     private bool gyroReady;
     private AndroidJavaClass headTrackerClass;
     private bool androidHeadTrackerReady;
     private float nextHeadTrackerLogTime;
+    private int lastPoseUpdateFrame = -1;
+    private float nextStatsLogTime;
+    private int frameSamples;
+    private float frameDeltaSum;
+    private float frameDeltaMin = float.MaxValue;
+    private float frameDeltaMax;
+    private int framesOver20Ms;
+    private int framesOver25Ms;
+    private int framesOver33Ms;
+    private bool previousPoseReady;
+    private Quaternion previousPose;
+    private int poseSamples;
+    private float poseAngleSum;
+    private float poseAngleMax;
+    private int repeatedPoseSamples;
+    private string lastPoseSource = "none";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
@@ -21,7 +37,9 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 
     private void Start()
     {
-        if (XRSettings.enabled)
+        ConfigureFramePacing();
+
+        if (IsUnityXrEnabled())
         {
             Debug.Log("SKYWORTH_FALLBACK Stereo disabled because XRSettings.enabled is true.");
             enabled = false;
@@ -40,21 +58,63 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         head.SetPositionAndRotation(source.transform.position, source.transform.rotation);
         DontDestroyOnLoad(head.gameObject);
 
-        CreateEye(source, "Left", -EyeSeparationMeters * 0.5f, new Rect(0f, 0f, 0.5f, 1f));
-        CreateEye(source, "Right", EyeSeparationMeters * 0.5f, new Rect(0.5f, 0f, 0.5f, 1f));
+        if (DiagnosticMonoRender)
+        {
+            CreateEye(source, "Mono", 0f, new Rect(0f, 0f, 1f, 1f));
+        }
+        else
+        {
+            CreateEye(source, "Left", -EyeSeparationMeters * 0.5f, new Rect(0f, 0f, 0.5f, 1f));
+            CreateEye(source, "Right", EyeSeparationMeters * 0.5f, new Rect(0.5f, 0f, 0.5f, 1f));
+        }
 
         source.enabled = false;
         Input.gyro.enabled = true;
         androidHeadTrackerReady = StartAndroidHeadTracker();
-        Debug.Log("SKYWORTH_FALLBACK Stereo fallback active: two cameras, side-by-side, gyro=" + SystemInfo.supportsGyroscope + " androidHeadTracker=" + androidHeadTrackerReady);
+        Debug.Log("SKYWORTH_FALLBACK fallback active: monoDiagnostic=" + DiagnosticMonoRender + " gyro=" + SystemInfo.supportsGyroscope + " androidHeadTracker=" + androidHeadTrackerReady);
+        Debug.Log("SKYWORTH_DISPLAY resolution=" + Screen.width + "x" + Screen.height + " refreshRate=" + Screen.currentResolution.refreshRate);
+    }
+
+    private static void ConfigureFramePacing()
+    {
+        QualitySettings.vSyncCount = 0;
+        Application.targetFrameRate = 72;
+        Screen.sleepTimeout = SleepTimeout.NeverSleep;
+        Screen.SetResolution(1360, 765, true, 72);
+        Debug.Log("SKYWORTH_FRAME_PACING targetFrameRate=" + Application.targetFrameRate + " vSyncCount=" + QualitySettings.vSyncCount + " requestedResolution=1360x765@72");
+    }
+
+    private static bool IsUnityXrEnabled()
+    {
+        var xrSettingsType = System.Type.GetType("UnityEngine.XR.XRSettings, UnityEngine.XRModule");
+        var enabledProperty = xrSettingsType?.GetProperty("enabled", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+        if (enabledProperty == null)
+        {
+            return false;
+        }
+
+        return (bool)enabledProperty.GetValue(null, null);
     }
 
     private void Update()
+    {
+        RecordFrameStats();
+        MaybeLogStats();
+    }
+
+    private void UpdateHeadPose()
     {
         if (head == null)
         {
             return;
         }
+
+        if (lastPoseUpdateFrame == Time.frameCount)
+        {
+            return;
+        }
+
+        lastPoseUpdateFrame = Time.frameCount;
 
         if (androidHeadTrackerReady && TryGetAndroidHeadRotation(out var androidRotation))
         {
@@ -72,6 +132,8 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 
     private void ApplyHeadRotation(Quaternion attitude, string source)
     {
+        RecordPoseStats(attitude, source);
+
         if (source == "android")
         {
             // TODO: This intentionally keeps the official Skyworth pose absolute.
@@ -102,6 +164,110 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         }
     }
 
+    private void RecordFrameStats()
+    {
+        var delta = Time.unscaledDeltaTime;
+        if (delta <= 0f)
+        {
+            return;
+        }
+
+        frameSamples++;
+        frameDeltaSum += delta;
+        frameDeltaMin = Mathf.Min(frameDeltaMin, delta);
+        frameDeltaMax = Mathf.Max(frameDeltaMax, delta);
+
+        if (delta > 0.020f)
+        {
+            framesOver20Ms++;
+        }
+
+        if (delta > 0.025f)
+        {
+            framesOver25Ms++;
+        }
+
+        if (delta > 0.033333f)
+        {
+            framesOver33Ms++;
+        }
+    }
+
+    private void RecordPoseStats(Quaternion attitude, string source)
+    {
+        lastPoseSource = source;
+        poseSamples++;
+
+        if (previousPoseReady)
+        {
+            var angle = Quaternion.Angle(previousPose, attitude);
+            poseAngleSum += angle;
+            poseAngleMax = Mathf.Max(poseAngleMax, angle);
+
+            if (angle < 0.001f)
+            {
+                repeatedPoseSamples++;
+            }
+        }
+
+        previousPose = attitude;
+        previousPoseReady = true;
+    }
+
+    private void MaybeLogStats()
+    {
+        if (Time.unscaledTime < nextStatsLogTime)
+        {
+            return;
+        }
+
+        nextStatsLogTime = Time.unscaledTime + 1f;
+
+        if (frameSamples > 0)
+        {
+            var averageMs = frameDeltaSum * 1000f / frameSamples;
+            var minMs = frameDeltaMin * 1000f;
+            var maxMs = frameDeltaMax * 1000f;
+            var fps = frameSamples / Mathf.Max(frameDeltaSum, 0.0001f);
+            Debug.Log(
+                "SKYWORTH_FRAME_STATS fps=" + fps.ToString("F1") +
+                " avgMs=" + averageMs.ToString("F2") +
+                " minMs=" + minMs.ToString("F2") +
+                " maxMs=" + maxMs.ToString("F2") +
+                " over20=" + framesOver20Ms +
+                " over25=" + framesOver25Ms +
+                " over33=" + framesOver33Ms);
+        }
+
+        if (poseSamples > 0)
+        {
+            var averagePoseAngle = poseAngleSum / Mathf.Max(poseSamples - 1, 1);
+            Debug.Log(
+                "SKYWORTH_POSE_STATS source=" + lastPoseSource +
+                " samples=" + poseSamples +
+                " avgDeg=" + averagePoseAngle.ToString("F3") +
+                " maxDeg=" + poseAngleMax.ToString("F3") +
+                " repeats=" + repeatedPoseSamples);
+        }
+
+        ResetStats();
+    }
+
+    private void ResetStats()
+    {
+        frameSamples = 0;
+        frameDeltaSum = 0f;
+        frameDeltaMin = float.MaxValue;
+        frameDeltaMax = 0f;
+        framesOver20Ms = 0;
+        framesOver25Ms = 0;
+        framesOver33Ms = 0;
+        poseSamples = 0;
+        poseAngleSum = 0f;
+        poseAngleMax = 0f;
+        repeatedPoseSamples = 0;
+    }
+
     private void CreateEye(Camera source, string eyeName, float xOffset, Rect rect)
     {
         var eye = Instantiate(source, head);
@@ -111,6 +277,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         eye.rect = rect;
         eye.stereoTargetEye = StereoTargetEyeMask.None;
         eye.enabled = true;
+        eye.gameObject.AddComponent<EyePoseUpdater>().Initialize(this);
 
         var listener = eye.GetComponent<AudioListener>();
         if (listener != null)
@@ -166,5 +333,23 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         }
 #endif
         return false;
+    }
+
+    private sealed class EyePoseUpdater : MonoBehaviour
+    {
+        private SkyworthFallbackStereoRig rig;
+
+        public void Initialize(SkyworthFallbackStereoRig owner)
+        {
+            rig = owner;
+        }
+
+        private void OnPreCull()
+        {
+            if (rig != null)
+            {
+                rig.UpdateHeadPose();
+            }
+        }
     }
 }

@@ -44,6 +44,8 @@ public sealed class SkyworthGradleTargetSdkPostprocessor : IPostGenerateGradleAn
 
         var android = "http://schemas.android.com/apk/res/android";
         var applicationId = PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.Android);
+        EnsureUsesPermission(document, android, "android.permission.WAKE_LOCK");
+
         var application = (XmlElement)document.SelectSingleNode("/manifest/application");
         if (application == null)
         {
@@ -96,6 +98,27 @@ public sealed class SkyworthGradleTargetSdkPostprocessor : IPostGenerateGradleAn
         }
 
         File.WriteAllText(manifestPath, text);
+    }
+
+    private static void EnsureUsesPermission(XmlDocument document, string android, string permissionName)
+    {
+        var manifest = (XmlElement)document.SelectSingleNode("/manifest");
+        if (manifest == null)
+        {
+            return;
+        }
+
+        foreach (XmlElement permission in manifest.GetElementsByTagName("uses-permission"))
+        {
+            if (permission.GetAttribute("name", android) == permissionName)
+            {
+                return;
+            }
+        }
+
+        var newPermission = document.CreateElement("uses-permission");
+        newPermission.SetAttribute("name", android, permissionName);
+        manifest.InsertBefore(newPermission, manifest.FirstChild);
     }
 
     private static void PatchSkyworthActivity(XmlDocument document, XmlElement application, string android, string applicationId)
