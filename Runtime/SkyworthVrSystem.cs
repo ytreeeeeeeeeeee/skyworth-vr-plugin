@@ -10,7 +10,7 @@ public static class SkyworthVrSystem
         {
             using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
             using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
-            using (var system = new AndroidJavaClass("com.local.skyworth.testvr2021.SkyworthSystem"))
+            using (var system = new AndroidJavaClass("com.ytreeeeeeeeeeee.skyworthvrplugin.SkyworthSystem"))
             {
                 if (system.CallStatic<bool>("goHome", activity))
                 {

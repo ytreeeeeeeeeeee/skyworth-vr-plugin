@@ -1,4 +1,4 @@
-package com.local.skyworth.testvr2021;
+package com.ytreeeeeeeeeeee.skyworthvrplugin;
 
 import android.app.Activity;
 import android.content.Intent;

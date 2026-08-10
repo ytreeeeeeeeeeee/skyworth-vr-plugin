@@ -6,6 +6,9 @@ using System.Xml;
 
 public sealed class SkyworthGradleTargetSdkPostprocessor : IPostGenerateGradleAndroidProject
 {
+    private const string SkyworthActivityClass = "com.ytreeeeeeeeeeee.skyworthvrplugin.SkyworthUnityActivity";
+    private const string SkyworthVrListenerClass = "com.ssnwt.sdk.VrListener";
+
     public int callbackOrder => 11000;
 
     public void OnPostGenerateGradleAndroidProject(string path)
@@ -44,7 +47,9 @@ public sealed class SkyworthGradleTargetSdkPostprocessor : IPostGenerateGradleAn
 
         var android = "http://schemas.android.com/apk/res/android";
         var applicationId = PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.Android);
+        RemoveUsesFeature(document, android, "android.software.vr.ignore.home");
         EnsureUsesPermission(document, android, "android.permission.WAKE_LOCK");
+        EnsureUsesFeature(document, android, "android.software.vr.mode");
 
         var application = (XmlElement)document.SelectSingleNode("/manifest/application");
         if (application == null)
@@ -55,15 +60,15 @@ public sealed class SkyworthGradleTargetSdkPostprocessor : IPostGenerateGradleAn
         foreach (XmlElement activity in application.GetElementsByTagName("activity"))
         {
             var name = activity.GetAttribute("name", android);
-            if (name == "com.unity3d.player.UnityPlayerActivity")
+            if (name == "com.unity3d.player.UnityPlayerActivity" || name.EndsWith(".SkyworthUnityActivity"))
             {
-                activity.SetAttribute("name", android, "com.local.skyworth.testvr2021.SkyworthUnityActivity");
-                activity.SetAttribute("enableVrMode", android, applicationId + "/com.ssnwt.sdk.VrListener");
+                activity.SetAttribute("name", android, SkyworthActivityClass);
+                activity.SetAttribute("enableVrMode", android, applicationId + "/" + SkyworthVrListenerClass);
                 activity.SetAttribute("screenOrientation", android, "portrait");
             }
         }
 
-        EnsureVrListenerService(document, application, android, "com.ssnwt.sdk.VrListener");
+        EnsureVrListenerService(document, application, android, SkyworthVrListenerClass);
         PatchSkyworthActivity(document, application, android, applicationId);
         document.Save(manifestPath);
     }
@@ -72,24 +77,33 @@ public sealed class SkyworthGradleTargetSdkPostprocessor : IPostGenerateGradleAn
     {
         var applicationId = PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.Android);
         var text = File.ReadAllText(manifestPath);
+        text = Regex.Replace(text, @"\s*<uses-feature\s+[^>]*android:name=""android\.software\.vr\.ignore\.home""[^>]*/>", "");
         text = text.Replace(
             "android:name=\"com.unity3d.player.UnityPlayerActivity\"",
-            "android:name=\"com.local.skyworth.testvr2021.SkyworthUnityActivity\"");
+            "android:name=\"" + SkyworthActivityClass + "\"");
+        text = Regex.Replace(
+            text,
+            "android:name=\"[^\"]*\\.SkyworthUnityActivity\"",
+            "android:name=\"" + SkyworthActivityClass + "\"");
         text = text.Replace(
-            "android:enableVrMode=\"com.local.skyworth.testvr2021/com.local.skyworth.testvr2021.SkyworthVrListener\"",
-            "android:enableVrMode=\"com.local.skyworth.testvr2021/com.ssnwt.sdk.VrListener\"");
+            "android:enableVrMode=\"${applicationId}/" + SkyworthVrListenerClass + "\"",
+            "android:enableVrMode=\"" + applicationId + "/" + SkyworthVrListenerClass + "\"");
+        text = Regex.Replace(
+            text,
+            "android:enableVrMode=\"[^\"]*/[^\"]*\\.SkyworthVrListener\"",
+            "android:enableVrMode=\"" + applicationId + "/" + SkyworthVrListenerClass + "\"");
         text = Regex.Replace(
             text,
             "android:enableVrMode=\"[^\"]*/com\\.ssnwt\\.sdk\\.VrListener\"",
-            "android:enableVrMode=\"" + applicationId + "/com.ssnwt.sdk.VrListener\"");
+            "android:enableVrMode=\"" + applicationId + "/" + SkyworthVrListenerClass + "\"");
         text = text.Replace(
             "android:screenOrientation=\"landscape\"",
             "android:screenOrientation=\"portrait\"");
 
-        if (!text.Contains("android:name=\"com.ssnwt.sdk.VrListener\""))
+        if (!text.Contains("android:name=\"" + SkyworthVrListenerClass + "\""))
         {
             var service =
-                "    <service android:name=\"com.ssnwt.sdk.VrListener\" android:permission=\"android.permission.BIND_VR_LISTENER_SERVICE\">\n" +
+                "    <service android:name=\"" + SkyworthVrListenerClass + "\" android:permission=\"android.permission.BIND_VR_LISTENER_SERVICE\">\n" +
                 "      <intent-filter>\n" +
                 "        <action android:name=\"android.service.vr.VrListenerService\" />\n" +
                 "      </intent-filter>\n" +
@@ -121,13 +135,53 @@ public sealed class SkyworthGradleTargetSdkPostprocessor : IPostGenerateGradleAn
         manifest.InsertBefore(newPermission, manifest.FirstChild);
     }
 
+    private static void EnsureUsesFeature(XmlDocument document, string android, string featureName)
+    {
+        var manifest = (XmlElement)document.SelectSingleNode("/manifest");
+        if (manifest == null)
+        {
+            return;
+        }
+
+        foreach (XmlElement feature in manifest.GetElementsByTagName("uses-feature"))
+        {
+            if (feature.GetAttribute("name", android) == featureName)
+            {
+                return;
+            }
+        }
+
+        var newFeature = document.CreateElement("uses-feature");
+        newFeature.SetAttribute("name", android, featureName);
+        manifest.InsertBefore(newFeature, manifest.FirstChild);
+    }
+
+    private static void RemoveUsesFeature(XmlDocument document, string android, string featureName)
+    {
+        var manifest = (XmlElement)document.SelectSingleNode("/manifest");
+        if (manifest == null)
+        {
+            return;
+        }
+
+        var features = manifest.GetElementsByTagName("uses-feature");
+        for (var i = features.Count - 1; i >= 0; i--)
+        {
+            var feature = (XmlElement)features[i];
+            if (feature.GetAttribute("name", android) == featureName)
+            {
+                manifest.RemoveChild(feature);
+            }
+        }
+    }
+
     private static void PatchSkyworthActivity(XmlDocument document, XmlElement application, string android, string applicationId)
     {
         foreach (XmlElement activity in application.GetElementsByTagName("activity"))
         {
-            if (activity.GetAttribute("name", android) == "com.local.skyworth.testvr2021.SkyworthUnityActivity")
+            if (activity.GetAttribute("name", android) == SkyworthActivityClass)
             {
-                activity.SetAttribute("enableVrMode", android, applicationId + "/com.ssnwt.sdk.VrListener");
+                activity.SetAttribute("enableVrMode", android, applicationId + "/" + SkyworthVrListenerClass);
                 activity.SetAttribute("screenOrientation", android, "portrait");
             }
         }

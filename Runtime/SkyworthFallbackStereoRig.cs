@@ -306,7 +306,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         try
         {
-            headTrackerClass = new AndroidJavaClass("com.local.skyworth.testvr2021.SkyworthHeadTracker");
+            headTrackerClass = new AndroidJavaClass("com.ytreeeeeeeeeeee.skyworthvrplugin.SkyworthHeadTracker");
             using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
             using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
             {

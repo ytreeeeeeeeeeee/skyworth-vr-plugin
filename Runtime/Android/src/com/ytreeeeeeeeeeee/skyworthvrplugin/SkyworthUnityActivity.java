@@ -1,4 +1,4 @@
-package com.local.skyworth.testvr2021;
+package com.ytreeeeeeeeeeee.skyworthvrplugin;
 
 import android.os.Bundle;
 import android.os.PowerManager;
@@ -105,7 +105,7 @@ public final class SkyworthUnityActivity extends Activity {
                     PowerManager.SCREEN_BRIGHT_WAKE_LOCK |
                     PowerManager.ACQUIRE_CAUSES_WAKEUP |
                     PowerManager.ON_AFTER_RELEASE,
-                    "SkyworthTestVR2021:VrDisplay");
+                    "SkyworthVrPlugin:VrDisplay");
                 wakeLock.setReferenceCounted(false);
             }
             if (!wakeLock.isHeld()) {

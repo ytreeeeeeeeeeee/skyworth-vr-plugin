@@ -78,7 +78,7 @@ static int OnHeadPose(unsigned long long timestampNs, avrQuatf& rotation) {
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_local_skyworth_testvr2021_SkyworthHeadTracker_nativeStart(JNIEnv*, jclass) {
+Java_com_ytreeeeeeeeeeee_skyworthvrplugin_SkyworthHeadTracker_nativeStart(JNIEnv*, jclass) {
     if (!ResolveOfficialApi()) {
         return JNI_FALSE;
     }
@@ -94,21 +94,21 @@ Java_com_local_skyworth_testvr2021_SkyworthHeadTracker_nativeStart(JNIEnv*, jcla
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_local_skyworth_testvr2021_SkyworthHeadTracker_nativeStop(JNIEnv*, jclass) {
+Java_com_ytreeeeeeeeeeee_skyworthvrplugin_SkyworthHeadTracker_nativeStop(JNIEnv*, jclass) {
     if (ResolveOfficialApi()) {
         gStopHeadTracker();
     }
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_local_skyworth_testvr2021_SkyworthHeadTracker_nativeRecenter(JNIEnv*, jclass) {
+Java_com_ytreeeeeeeeeeee_skyworthvrplugin_SkyworthHeadTracker_nativeRecenter(JNIEnv*, jclass) {
     if (ResolveOfficialApi()) {
         gRecenterHeadTracker(0);
     }
 }
 
 extern "C" JNIEXPORT jfloatArray JNICALL
-Java_com_local_skyworth_testvr2021_SkyworthHeadTracker_nativeGetQuaternion(JNIEnv* env, jclass) {
+Java_com_ytreeeeeeeeeeee_skyworthvrplugin_SkyworthHeadTracker_nativeGetQuaternion(JNIEnv* env, jclass) {
     float values[5];
 
     float orientation[4] = {0.0f, 0.0f, 0.0f, 1.0f};
