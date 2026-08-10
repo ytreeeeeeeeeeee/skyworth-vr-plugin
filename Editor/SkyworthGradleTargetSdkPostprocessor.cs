@@ -47,7 +47,6 @@ public sealed class SkyworthGradleTargetSdkPostprocessor : IPostGenerateGradleAn
 
         var android = "http://schemas.android.com/apk/res/android";
         var applicationId = PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.Android);
-        RemoveUsesFeature(document, android, "android.software.vr.ignore.home");
         EnsureUsesPermission(document, android, "android.permission.WAKE_LOCK");
         EnsureUsesFeature(document, android, "android.software.vr.mode");
 
@@ -77,7 +76,6 @@ public sealed class SkyworthGradleTargetSdkPostprocessor : IPostGenerateGradleAn
     {
         var applicationId = PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.Android);
         var text = File.ReadAllText(manifestPath);
-        text = Regex.Replace(text, @"\s*<uses-feature\s+[^>]*android:name=""android\.software\.vr\.ignore\.home""[^>]*/>", "");
         text = text.Replace(
             "android:name=\"com.unity3d.player.UnityPlayerActivity\"",
             "android:name=\"" + SkyworthActivityClass + "\"");
@@ -154,25 +152,6 @@ public sealed class SkyworthGradleTargetSdkPostprocessor : IPostGenerateGradleAn
         var newFeature = document.CreateElement("uses-feature");
         newFeature.SetAttribute("name", android, featureName);
         manifest.InsertBefore(newFeature, manifest.FirstChild);
-    }
-
-    private static void RemoveUsesFeature(XmlDocument document, string android, string featureName)
-    {
-        var manifest = (XmlElement)document.SelectSingleNode("/manifest");
-        if (manifest == null)
-        {
-            return;
-        }
-
-        var features = manifest.GetElementsByTagName("uses-feature");
-        for (var i = features.Count - 1; i >= 0; i--)
-        {
-            var feature = (XmlElement)features[i];
-            if (feature.GetAttribute("name", android) == featureName)
-            {
-                manifest.RemoveChild(feature);
-            }
-        }
     }
 
     private static void PatchSkyworthActivity(XmlDocument document, XmlElement application, string android, string applicationId)
