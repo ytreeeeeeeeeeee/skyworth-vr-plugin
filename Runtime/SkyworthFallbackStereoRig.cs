@@ -1,9 +1,13 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 {
     private const bool DiagnosticMonoRender = false;
+    private static SkyworthFallbackStereoRig instance;
+
     private Transform head;
+    private Camera sourceCamera;
     private Quaternion gyroReference;
     private bool gyroReady;
     private AndroidJavaClass headTrackerClass;
@@ -29,9 +33,24 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
     {
+        if (instance != null)
+        {
+            return;
+        }
+
         var go = new GameObject("Skyworth Fallback Stereo Rig");
         DontDestroyOnLoad(go);
-        go.AddComponent<SkyworthFallbackStereoRig>();
+        instance = go.AddComponent<SkyworthFallbackStereoRig>();
+    }
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
     private void Start()
@@ -45,17 +64,36 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
             return;
         }
 
+        RebuildRigForActiveScene();
+        Input.gyro.enabled = true;
+        androidHeadTrackerReady = StartAndroidHeadTracker();
+        Debug.Log("SKYWORTH_FALLBACK fallback active: monoDiagnostic=" + DiagnosticMonoRender + " gyro=" + SystemInfo.supportsGyroscope + " androidHeadTracker=" + androidHeadTrackerReady);
+        Debug.Log("SKYWORTH_DISPLAY resolution=" + Screen.width + "x" + Screen.height + " refreshRate=" + Screen.currentResolution.refreshRate);
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (!enabled)
+        {
+            return;
+        }
+
+        RebuildRigForActiveScene();
+    }
+
+    private void RebuildRigForActiveScene()
+    {
         var source = Camera.main != null ? Camera.main : FindObjectOfType<Camera>();
         if (source == null)
         {
             Debug.LogWarning("SKYWORTH_FALLBACK No camera found for stereo fallback.");
-            enabled = false;
             return;
         }
 
+        DestroyExistingHead();
+        sourceCamera = source;
         head = new GameObject("Skyworth Fallback Head").transform;
-        head.SetPositionAndRotation(source.transform.position, source.transform.rotation);
-        DontDestroyOnLoad(head.gameObject);
+        AttachHeadToSourceParent(source);
 
         DisableAudioListener(source);
 
@@ -70,10 +108,28 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         }
 
         source.enabled = false;
-        Input.gyro.enabled = true;
-        androidHeadTrackerReady = StartAndroidHeadTracker();
-        Debug.Log("SKYWORTH_FALLBACK fallback active: monoDiagnostic=" + DiagnosticMonoRender + " gyro=" + SystemInfo.supportsGyroscope + " androidHeadTracker=" + androidHeadTrackerReady);
-        Debug.Log("SKYWORTH_DISPLAY resolution=" + Screen.width + "x" + Screen.height + " refreshRate=" + Screen.currentResolution.refreshRate);
+        Debug.Log("SKYWORTH_FALLBACK rig rebuilt source=" + source.name + " parent=" + (head.parent != null ? head.parent.name : "<scene-root>"));
+    }
+
+    private void AttachHeadToSourceParent(Camera source)
+    {
+        var sourceTransform = source.transform;
+        var sourceParent = sourceTransform.parent;
+        head.SetParent(sourceParent, false);
+        head.localPosition = sourceTransform.localPosition;
+        head.localRotation = sourceTransform.localRotation;
+        head.localScale = Vector3.one;
+    }
+
+    private void DestroyExistingHead()
+    {
+        if (head == null)
+        {
+            return;
+        }
+
+        Destroy(head.gameObject);
+        head = null;
     }
 
     private static void ConfigureFramePacing()
@@ -99,8 +155,25 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 
     private void Update()
     {
+        FollowSourceCameraBasePose();
         RecordFrameStats();
         MaybeLogStats();
+    }
+
+    private void FollowSourceCameraBasePose()
+    {
+        if (head == null || sourceCamera == null)
+        {
+            return;
+        }
+
+        var sourceTransform = sourceCamera.transform;
+        if (head.parent != sourceTransform.parent)
+        {
+            head.SetParent(sourceTransform.parent, false);
+        }
+
+        head.localPosition = sourceTransform.localPosition;
     }
 
     private void UpdateHeadPose()
