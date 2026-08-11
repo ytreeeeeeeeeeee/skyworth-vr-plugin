@@ -240,6 +240,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         if (source == "editor-mouse")
         {
             head.localRotation = attitude;
+            SyncSourceCameraRotation();
 
             if (Time.unscaledTime >= nextHeadTrackerLogTime)
             {
@@ -256,6 +257,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
             // TODO: This intentionally keeps the official Skyworth pose absolute.
             // If product behavior should match common VR apps, restore recenter-on-start here.
             head.localRotation = attitude;
+            SyncSourceCameraRotation();
 
             if (Time.unscaledTime >= nextHeadTrackerLogTime)
             {
@@ -273,11 +275,20 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         }
 
         head.localRotation = gyroReference * attitude;
+        SyncSourceCameraRotation();
 
         if (Time.unscaledTime >= nextHeadTrackerLogTime)
         {
             nextHeadTrackerLogTime = Time.unscaledTime + 3f;
             Debug.Log("SKYWORTH_HEADTRACK source=" + source + " rotation=" + head.localRotation.eulerAngles);
+        }
+    }
+
+    private void SyncSourceCameraRotation()
+    {
+        if (sourceCamera != null && head != null)
+        {
+            sourceCamera.transform.localRotation = head.localRotation;
         }
     }
 
