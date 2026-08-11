@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools"
+  package="com.ytreeeeeeeeeeee.skyworthvrplugin.manifest">
   <uses-permission android:name="android.permission.WAKE_LOCK" />
   <uses-feature android:name="android.software.vr.mode" android:required="false" />
 
   <application android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+    <activity
+      android:name="com.unity3d.player.UnityPlayerActivity"
+      tools:node="remove" />
+
     <activity
       android:name="com.ytreeeeeeeeeeee.skyworthvrplugin.SkyworthUnityActivity"
       android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
@@ -22,6 +28,7 @@
     <meta-data android:name="IMMERSIVE_MODE" android:value="true" />
     <service
       android:name="com.ssnwt.sdk.VrListener"
+      android:exported="false"
       android:permission="android.permission.BIND_VR_LISTENER_SERVICE">
       <intent-filter>
         <action android:name="android.service.vr.VrListenerService" />
