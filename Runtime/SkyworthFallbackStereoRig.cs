@@ -173,6 +173,13 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         MaybeLogStats();
     }
 
+#if UNITY_EDITOR
+    private void LateUpdate()
+    {
+        UpdateHeadPose();
+    }
+#endif
+
     private void FollowSourceCameraBasePose()
     {
         if (head == null || sourceCamera == null)
@@ -292,7 +299,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
             editorMouseReady = true;
         }
 
-        if (Input.GetMouseButton(1))
+        if (Application.isFocused)
         {
             editorMouseYaw += Input.GetAxisRaw("Mouse X") * EditorMouseSensitivity;
             editorMousePitch -= Input.GetAxisRaw("Mouse Y") * EditorMouseSensitivity;
