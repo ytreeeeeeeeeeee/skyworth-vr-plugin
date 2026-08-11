@@ -4,10 +4,20 @@ using UnityEngine.SceneManagement;
 public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 {
     private const bool DiagnosticMonoRender = false;
+#if UNITY_EDITOR
+    private const float EditorMouseSensitivity = 2.5f;
+    private const float EditorMouseMinPitch = -85f;
+    private const float EditorMouseMaxPitch = 85f;
+#endif
     private static SkyworthFallbackStereoRig instance;
 
     private Transform head;
     private Camera sourceCamera;
+#if UNITY_EDITOR
+    private bool editorMouseReady;
+    private float editorMouseYaw;
+    private float editorMousePitch;
+#endif
     private Quaternion gyroReference;
     private bool gyroReady;
     private AndroidJavaClass headTrackerClass;
@@ -94,6 +104,9 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         sourceCamera = source;
         head = new GameObject("Skyworth Fallback Head").transform;
         AttachHeadToSourceParent(source);
+#if UNITY_EDITOR
+        editorMouseReady = false;
+#endif
 
         DisableAudioListener(source);
 
@@ -190,6 +203,14 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 
         lastPoseUpdateFrame = Time.frameCount;
 
+#if UNITY_EDITOR
+        if (TryGetEditorMouseRotation(out var editorMouseRotation))
+        {
+            ApplyHeadRotation(editorMouseRotation, "editor-mouse");
+            return;
+        }
+#endif
+
         if (androidHeadTrackerReady && TryGetAndroidHeadRotation(out var androidRotation))
         {
             ApplyHeadRotation(androidRotation, "android");
@@ -207,6 +228,21 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
     private void ApplyHeadRotation(Quaternion attitude, string source)
     {
         RecordPoseStats(attitude, source);
+
+#if UNITY_EDITOR
+        if (source == "editor-mouse")
+        {
+            head.localRotation = attitude;
+
+            if (Time.unscaledTime >= nextHeadTrackerLogTime)
+            {
+                nextHeadTrackerLogTime = Time.unscaledTime + 3f;
+                Debug.Log("SKYWORTH_HEADTRACK source=" + source + " rotation=" + head.localRotation.eulerAngles);
+            }
+
+            return;
+        }
+#endif
 
         if (source == "android")
         {
@@ -237,6 +273,41 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
             Debug.Log("SKYWORTH_HEADTRACK source=" + source + " rotation=" + head.localRotation.eulerAngles);
         }
     }
+
+#if UNITY_EDITOR
+    private bool TryGetEditorMouseRotation(out Quaternion rotation)
+    {
+        rotation = Quaternion.identity;
+
+        if (head == null)
+        {
+            return false;
+        }
+
+        if (!editorMouseReady)
+        {
+            var euler = head.localRotation.eulerAngles;
+            editorMouseYaw = NormalizeEditorAngle(euler.y);
+            editorMousePitch = NormalizeEditorAngle(euler.x);
+            editorMouseReady = true;
+        }
+
+        if (Input.GetMouseButton(1))
+        {
+            editorMouseYaw += Input.GetAxisRaw("Mouse X") * EditorMouseSensitivity;
+            editorMousePitch -= Input.GetAxisRaw("Mouse Y") * EditorMouseSensitivity;
+            editorMousePitch = Mathf.Clamp(editorMousePitch, EditorMouseMinPitch, EditorMouseMaxPitch);
+        }
+
+        rotation = Quaternion.Euler(editorMousePitch, editorMouseYaw, 0f);
+        return true;
+    }
+
+    private static float NormalizeEditorAngle(float angle)
+    {
+        return angle > 180f ? angle - 360f : angle;
+    }
+#endif
 
     private void RecordFrameStats()
     {
