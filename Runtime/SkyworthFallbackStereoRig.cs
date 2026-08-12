@@ -147,11 +147,12 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 
     private static void ConfigureFramePacing()
     {
+        var settings = SkyworthVrSettings.Load();
         QualitySettings.vSyncCount = 0;
-        Application.targetFrameRate = 72;
+        Application.targetFrameRate = settings.TargetFrameRate;
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
-        Screen.SetResolution(1360, 765, true, 72);
-        Debug.Log("SKYWORTH_FRAME_PACING targetFrameRate=" + Application.targetFrameRate + " vSyncCount=" + QualitySettings.vSyncCount + " requestedResolution=1360x765@72");
+        Screen.SetResolution(settings.ScreenWidth, settings.ScreenHeight, true, settings.RefreshRate);
+        Debug.Log("SKYWORTH_FRAME_PACING targetFrameRate=" + Application.targetFrameRate + " vSyncCount=" + QualitySettings.vSyncCount + " requestedResolution=" + settings.ScreenWidth + "x" + settings.ScreenHeight + "@" + settings.RefreshRate);
     }
 
     private static bool IsUnityXrEnabled()
