@@ -13,6 +13,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 
     private Transform head;
     private Camera sourceCamera;
+    private Transform sourceParent;
 #if UNITY_EDITOR
     private bool editorMouseReady;
     private float editorMouseYaw;
@@ -102,8 +103,9 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 
         DestroyExistingHead();
         sourceCamera = source;
+        sourceParent = source.transform.parent;
         head = new GameObject("Skyworth Fallback Head").transform;
-        AttachHeadToSourceParent(source);
+        AttachHeadAboveSource(source);
 #if UNITY_EDITOR
         editorMouseReady = false;
 #endif
@@ -124,18 +126,24 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         Debug.Log("SKYWORTH_FALLBACK rig rebuilt source=" + source.name + " parent=" + (head.parent != null ? head.parent.name : "<scene-root>"));
     }
 
-    private void AttachHeadToSourceParent(Camera source)
+    private void AttachHeadAboveSource(Camera source)
     {
         var sourceTransform = source.transform;
-        var sourceParent = sourceTransform.parent;
         head.SetParent(sourceParent, false);
         head.localPosition = sourceTransform.localPosition;
         head.localRotation = sourceTransform.localRotation;
         head.localScale = Vector3.one;
+
+        sourceTransform.SetParent(head, false);
+        sourceTransform.localPosition = Vector3.zero;
+        sourceTransform.localRotation = Quaternion.identity;
+        sourceTransform.localScale = Vector3.one;
     }
 
     private void DestroyExistingHead()
     {
+        RestoreSourceCameraParent();
+
         if (head == null)
         {
             return;
@@ -143,6 +151,24 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 
         Destroy(head.gameObject);
         head = null;
+    }
+
+    private void RestoreSourceCameraParent()
+    {
+        if (sourceCamera == null || sourceCamera.transform.parent != head)
+        {
+            return;
+        }
+
+        var sourceTransform = sourceCamera.transform;
+        sourceTransform.SetParent(sourceParent, false);
+
+        if (head != null)
+        {
+            sourceTransform.localPosition = head.localPosition;
+            sourceTransform.localRotation = head.localRotation;
+            sourceTransform.localScale = Vector3.one;
+        }
     }
 
     private static void ConfigureFramePacing()
@@ -188,13 +214,11 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
             return;
         }
 
-        var sourceTransform = sourceCamera.transform;
-        if (head.parent != sourceTransform.parent)
+        if (head.parent != sourceParent)
         {
-            head.SetParent(sourceTransform.parent, false);
+            head.SetParent(sourceParent, false);
         }
 
-        head.localPosition = sourceTransform.localPosition;
     }
 
     private void UpdateHeadPose()
@@ -241,7 +265,6 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         if (source == "editor-mouse")
         {
             head.localRotation = attitude;
-            SyncSourceCameraRotation();
 
             if (Time.unscaledTime >= nextHeadTrackerLogTime)
             {
@@ -258,7 +281,6 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
             // TODO: This intentionally keeps the official Skyworth pose absolute.
             // If product behavior should match common VR apps, restore recenter-on-start here.
             head.localRotation = attitude;
-            SyncSourceCameraRotation();
 
             if (Time.unscaledTime >= nextHeadTrackerLogTime)
             {
@@ -276,20 +298,11 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         }
 
         head.localRotation = gyroReference * attitude;
-        SyncSourceCameraRotation();
 
         if (Time.unscaledTime >= nextHeadTrackerLogTime)
         {
             nextHeadTrackerLogTime = Time.unscaledTime + 3f;
             Debug.Log("SKYWORTH_HEADTRACK source=" + source + " rotation=" + head.localRotation.eulerAngles);
-        }
-    }
-
-    private void SyncSourceCameraRotation()
-    {
-        if (sourceCamera != null && head != null)
-        {
-            sourceCamera.transform.localRotation = head.localRotation;
         }
     }
 
@@ -434,19 +447,21 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 
     private void CreateEye(Camera source, string eyeName, float xOffset, Rect rect)
     {
-        var eye = Instantiate(source, head);
-        eye.name = "Skyworth Fallback " + eyeName + " Eye";
-        eye.transform.localPosition = new Vector3(xOffset, 0f, 0f);
-        eye.transform.localRotation = Quaternion.identity;
+        var eyeObject = new GameObject("Skyworth Fallback " + eyeName + " Eye");
+        eyeObject.transform.SetParent(head, false);
+        eyeObject.transform.localPosition = new Vector3(xOffset, 0f, 0f);
+        eyeObject.transform.localRotation = Quaternion.identity;
+
+        var eye = eyeObject.AddComponent<Camera>();
+        eye.CopyFrom(source);
         eye.rect = rect;
         eye.stereoTargetEye = StereoTargetEyeMask.None;
         eye.enabled = true;
-        eye.gameObject.AddComponent<EyePoseUpdater>().Initialize(this);
+        eyeObject.AddComponent<EyePoseUpdater>().Initialize(this);
 
-        var listener = eye.GetComponent<AudioListener>();
-        if (listener != null)
+        if (source.GetComponent<AudioListener>() != null && (eyeName == "Left" || eyeName == "Mono"))
         {
-            listener.enabled = eyeName == "Left" || eyeName == "Mono";
+            eyeObject.AddComponent<AudioListener>();
         }
     }
 
