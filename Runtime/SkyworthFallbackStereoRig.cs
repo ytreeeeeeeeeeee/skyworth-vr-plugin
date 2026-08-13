@@ -144,6 +144,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 
     private void DestroyExistingHead()
     {
+        SkyworthVrRig.ClearEyeCameras();
         RestoreSourceCameraParent();
 
         if (head == null)
@@ -461,11 +462,17 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         eye.stereoTargetEye = StereoTargetEyeMask.None;
         eye.enabled = true;
         eyeObject.AddComponent<EyePoseUpdater>().Initialize(this);
+        SkyworthVrRig.SetEyeCamera(GetEye(eyeName), eye);
 
         if (source.GetComponent<AudioListener>() != null && (eyeName == "Left" || eyeName == "Mono"))
         {
             eyeObject.AddComponent<AudioListener>();
         }
+    }
+
+    private static SkyworthEye GetEye(string eyeName)
+    {
+        return eyeName == "Right" ? SkyworthEye.Right : SkyworthEye.Left;
     }
 
     private int GetEyeAdditionalCullingMask(string eyeName)
