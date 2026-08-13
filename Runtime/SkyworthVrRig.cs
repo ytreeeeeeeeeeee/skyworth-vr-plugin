@@ -3,9 +3,38 @@ using UnityEngine;
 
 public static class SkyworthVrRig
 {
-    public static event Action<SkyworthEye, Camera> EyeCameraCreated;
+    private static Action<SkyworthEye, Camera> eyeCameraCreated;
+    private static Action rigRebuilt;
 
-    public static event Action RigRebuilt;
+    public static event Action<SkyworthEye, Camera> EyeCameraCreated
+    {
+        add
+        {
+            eyeCameraCreated += value;
+            InvokeExistingEyeCameras(value);
+        }
+        remove
+        {
+            eyeCameraCreated -= value;
+        }
+    }
+
+    public static event Action RigRebuilt
+    {
+        add
+        {
+            rigRebuilt += value;
+
+            if (LeftEyeCamera != null && RightEyeCamera != null)
+            {
+                value?.Invoke();
+            }
+        }
+        remove
+        {
+            rigRebuilt -= value;
+        }
+    }
 
     public static Camera LeftEyeCamera { get; private set; }
 
@@ -28,11 +57,11 @@ public static class SkyworthVrRig
             RightEyeCamera = camera;
         }
 
-        EyeCameraCreated?.Invoke(eye, camera);
+        eyeCameraCreated?.Invoke(eye, camera);
 
         if (LeftEyeCamera != null && RightEyeCamera != null)
         {
-            RigRebuilt?.Invoke();
+            rigRebuilt?.Invoke();
         }
     }
 
@@ -40,5 +69,23 @@ public static class SkyworthVrRig
     {
         LeftEyeCamera = null;
         RightEyeCamera = null;
+    }
+
+    private static void InvokeExistingEyeCameras(Action<SkyworthEye, Camera> callback)
+    {
+        if (callback == null)
+        {
+            return;
+        }
+
+        if (LeftEyeCamera != null)
+        {
+            callback.Invoke(SkyworthEye.Left, LeftEyeCamera);
+        }
+
+        if (RightEyeCamera != null)
+        {
+            callback.Invoke(SkyworthEye.Right, RightEyeCamera);
+        }
     }
 }
