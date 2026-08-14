@@ -3,7 +3,6 @@ package com.ssnwt.sdk;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.provider.Settings;
-import android.service.vr.VrListenerService;
 import android.util.Log;
 
 public final class VRAPI {
@@ -23,7 +22,6 @@ public final class VRAPI {
 
         try {
             int result = JniUtiles.nativeAtwInit(mode);
-            Log.i(TAG, "nativeAtwInit(" + mode + ")=" + result);
             return result == 0;
         } catch (Throwable t) {
             Log.e(TAG, "nativeAtwInit failed", t);
@@ -34,8 +32,6 @@ public final class VRAPI {
     public static void setVrMode(Activity targetActivity, boolean enabled) {
         ComponentName listener = new ComponentName(targetActivity.getPackageName(), "com.ssnwt.sdk.VrListener");
         try {
-            boolean listenerEnabled = VrListenerService.isVrModePackageEnabled(targetActivity, listener);
-            Log.i(TAG, "setVrMode " + enabled + ", listenerEnabled=" + listenerEnabled);
             targetActivity.setVrModeEnabled(enabled, listener);
         } catch (Throwable t) {
             Log.e(TAG, "setVrMode failed", t);
@@ -49,7 +45,6 @@ public final class VRAPI {
 
         try {
             int result = JniUtiles.nativeEnableDevice();
-            Log.i(TAG, "nativeEnableDevice=" + result);
             return result == 0;
         } catch (Throwable t) {
             Log.e(TAG, "nativeEnableDevice failed", t);
@@ -63,8 +58,7 @@ public final class VRAPI {
         }
 
         try {
-            int result = JniUtiles.nativeDisableDevice();
-            Log.i(TAG, "nativeDisableDevice=" + result);
+            JniUtiles.nativeDisableDevice();
         } catch (Throwable t) {
             Log.e(TAG, "nativeDisableDevice failed", t);
         }

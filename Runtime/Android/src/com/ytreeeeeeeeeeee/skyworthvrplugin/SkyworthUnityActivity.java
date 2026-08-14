@@ -19,7 +19,6 @@ public final class SkyworthUnityActivity extends Activity {
     private static final String TAG = "SkyworthSsnwt";
     private UnityPlayer unityPlayer;
     private PowerManager.WakeLock wakeLock;
-    private long lastMotionLogTimeMs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,7 +27,6 @@ public final class SkyworthUnityActivity extends Activity {
         keepDisplayAwake();
         VRAPI.setVrMode(this, true);
         VRAPI.enableDevice();
-        Log.i(TAG, "SkyworthUnityActivity onCreate with Java VR mode");
         unityPlayer = new UnityPlayer(this);
         setContentView(unityPlayer);
         unityPlayer.requestFocus();
@@ -48,7 +46,6 @@ public final class SkyworthUnityActivity extends Activity {
 
     @Override
     protected void onPause() {
-        Log.i(TAG, "onPause");
         if (unityPlayer != null) {
             unityPlayer.onPause();
         }
@@ -110,7 +107,6 @@ public final class SkyworthUnityActivity extends Activity {
             }
             if (!wakeLock.isHeld()) {
                 wakeLock.acquire();
-                Log.i(TAG, "WakeLock acquired");
             }
         } catch (Throwable t) {
             Log.e(TAG, "WakeLock acquire failed", t);
@@ -121,7 +117,6 @@ public final class SkyworthUnityActivity extends Activity {
         try {
             if (wakeLock != null && wakeLock.isHeld()) {
                 wakeLock.release();
-                Log.i(TAG, "WakeLock released");
             }
         } catch (Throwable t) {
             Log.e(TAG, "WakeLock release failed", t);
@@ -171,13 +166,11 @@ public final class SkyworthUnityActivity extends Activity {
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
-        logKey("up", keyCode, event);
         return unityPlayer != null && unityPlayer.injectEvent(event);
     }
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        logKey("down", keyCode, event);
         return unityPlayer != null && unityPlayer.injectEvent(event);
     }
 
@@ -188,39 +181,6 @@ public final class SkyworthUnityActivity extends Activity {
 
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {
-        logMotion(event);
         return unityPlayer != null && unityPlayer.injectEvent(event);
-    }
-
-    private static void logKey(String phase, int keyCode, KeyEvent event) {
-        Log.i(TAG,
-            "SKYWORTH_ANDROID_KEY " + phase +
-            " keyCode=" + keyCode +
-            " scanCode=" + event.getScanCode() +
-            " repeat=" + event.getRepeatCount() +
-            " source=0x" + Integer.toHexString(event.getSource()) +
-            " deviceId=" + event.getDeviceId() +
-            " name=" + KeyEvent.keyCodeToString(keyCode));
-    }
-
-    private void logMotion(MotionEvent event) {
-        long now = System.currentTimeMillis();
-        if (now - lastMotionLogTimeMs < 200) {
-            return;
-        }
-
-        lastMotionLogTimeMs = now;
-        Log.i(TAG,
-            "SKYWORTH_ANDROID_MOTION action=" + event.getActionMasked() +
-            " source=0x" + Integer.toHexString(event.getSource()) +
-            " deviceId=" + event.getDeviceId() +
-            " x=" + event.getX() +
-            " y=" + event.getY() +
-            " axisX=" + event.getAxisValue(MotionEvent.AXIS_X) +
-            " axisY=" + event.getAxisValue(MotionEvent.AXIS_Y) +
-            " hatX=" + event.getAxisValue(MotionEvent.AXIS_HAT_X) +
-            " hatY=" + event.getAxisValue(MotionEvent.AXIS_HAT_Y) +
-            " z=" + event.getAxisValue(MotionEvent.AXIS_Z) +
-            " rz=" + event.getAxisValue(MotionEvent.AXIS_RZ));
     }
 }

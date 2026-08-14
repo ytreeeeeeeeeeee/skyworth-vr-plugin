@@ -13,7 +13,6 @@ public final class SkyworthHeadTracker {
             System.loadLibrary("atw_api");
             System.loadLibrary("skyworth_headtrack");
             librariesLoaded = true;
-            Log.i(TAG, "official head tracker bridge libraries loaded");
         } catch (Throwable t) {
             librariesLoaded = false;
             Log.e(TAG, "failed to load official head tracker bridge", t);
@@ -33,7 +32,6 @@ public final class SkyworthHeadTracker {
         }
 
         started = nativeStart();
-        Log.i(TAG, "official orientation polling started=" + started);
         return started;
     }
 
@@ -44,7 +42,6 @@ public final class SkyworthHeadTracker {
 
         nativeStop();
         started = false;
-        Log.i(TAG, "official awStopHeadTracker");
     }
 
     public static synchronized void recenter() {

@@ -20,7 +20,6 @@ public final class SkyworthSystem {
             intent.addCategory(Intent.CATEGORY_HOME);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(intent);
-            Log.i(TAG, "Started HOME intent from Unity");
             return true;
         } catch (Throwable t) {
             Log.e(TAG, "Failed to start HOME intent", t);

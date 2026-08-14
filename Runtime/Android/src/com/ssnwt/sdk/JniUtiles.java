@@ -10,7 +10,6 @@ public final class JniUtiles {
         try {
             System.loadLibrary("avr_api");
             loaded = true;
-            Log.i(TAG, "Loaded libavr_api");
         } catch (Throwable t) {
             loaded = false;
             Log.e(TAG, "Failed to load libavr_api", t);

@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 {
     private const bool DiagnosticMonoRender = false;
+    private const bool DiagnosticsEnabled = false;
     private const string LeftEyeLayerName = "SkyworthLeftEye";
     private const string RightEyeLayerName = "SkyworthRightEye";
 #if UNITY_EDITOR
@@ -72,7 +73,6 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 
         if (IsUnityXrEnabled())
         {
-            Debug.Log("SKYWORTH_FALLBACK Stereo disabled because XRSettings.enabled is true.");
             enabled = false;
             return;
         }
@@ -80,8 +80,8 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         RebuildRigForActiveScene();
         Input.gyro.enabled = true;
         androidHeadTrackerReady = StartAndroidHeadTracker();
-        Debug.Log("SKYWORTH_FALLBACK fallback active: monoDiagnostic=" + DiagnosticMonoRender + " gyro=" + SystemInfo.supportsGyroscope + " androidHeadTracker=" + androidHeadTrackerReady);
-        Debug.Log("SKYWORTH_DISPLAY resolution=" + Screen.width + "x" + Screen.height + " refreshRate=" + Screen.currentResolution.refreshRate);
+        LogDiagnostic("SKYWORTH_FALLBACK fallback active: monoDiagnostic=" + DiagnosticMonoRender + " gyro=" + SystemInfo.supportsGyroscope + " androidHeadTracker=" + androidHeadTrackerReady);
+        LogDiagnostic("SKYWORTH_DISPLAY resolution=" + Screen.width + "x" + Screen.height + " refreshRate=" + Screen.currentResolution.refreshRate);
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -125,7 +125,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         }
 
         source.enabled = false;
-        Debug.Log("SKYWORTH_FALLBACK rig rebuilt source=" + source.name + " parent=" + (head.parent != null ? head.parent.name : "<scene-root>"));
+        LogDiagnostic("SKYWORTH_FALLBACK rig rebuilt source=" + source.name + " parent=" + (head.parent != null ? head.parent.name : "<scene-root>"));
     }
 
     private void AttachHeadAboveSource(Camera source)
@@ -181,7 +181,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         Application.targetFrameRate = settings.TargetFrameRate;
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
         Screen.SetResolution(settings.ScreenWidth, settings.ScreenHeight, true, settings.RefreshRate);
-        Debug.Log("SKYWORTH_FRAME_PACING targetFrameRate=" + Application.targetFrameRate + " vSyncCount=" + QualitySettings.vSyncCount + " requestedResolution=" + settings.ScreenWidth + "x" + settings.ScreenHeight + "@" + settings.RefreshRate);
+        LogDiagnostic("SKYWORTH_FRAME_PACING targetFrameRate=" + Application.targetFrameRate + " vSyncCount=" + QualitySettings.vSyncCount + " requestedResolution=" + settings.ScreenWidth + "x" + settings.ScreenHeight + "@" + settings.RefreshRate);
     }
 
     private static bool IsUnityXrEnabled()
@@ -199,8 +199,11 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
     private void Update()
     {
         FollowSourceCameraBasePose();
-        RecordFrameStats();
-        MaybeLogStats();
+        if (DiagnosticsEnabled)
+        {
+            RecordFrameStats();
+            MaybeLogStats();
+        }
     }
 
 #if UNITY_EDITOR
@@ -262,7 +265,10 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 
     private void ApplyHeadRotation(Quaternion attitude, string source)
     {
-        RecordPoseStats(attitude, source);
+        if (DiagnosticsEnabled)
+        {
+            RecordPoseStats(attitude, source);
+        }
 
 #if UNITY_EDITOR
         if (source == "editor-mouse")
@@ -272,7 +278,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
             if (Time.unscaledTime >= nextHeadTrackerLogTime)
             {
                 nextHeadTrackerLogTime = Time.unscaledTime + 3f;
-                Debug.Log("SKYWORTH_HEADTRACK source=" + source + " rotation=" + head.localRotation.eulerAngles);
+                LogDiagnostic("SKYWORTH_HEADTRACK source=" + source + " rotation=" + head.localRotation.eulerAngles);
             }
 
             return;
@@ -288,7 +294,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
             if (Time.unscaledTime >= nextHeadTrackerLogTime)
             {
                 nextHeadTrackerLogTime = Time.unscaledTime + 3f;
-                Debug.Log("SKYWORTH_HEADTRACK source=" + source + " absoluteRotation=" + head.localRotation.eulerAngles);
+                LogDiagnostic("SKYWORTH_HEADTRACK source=" + source + " absoluteRotation=" + head.localRotation.eulerAngles);
             }
 
             return;
@@ -305,7 +311,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         if (Time.unscaledTime >= nextHeadTrackerLogTime)
         {
             nextHeadTrackerLogTime = Time.unscaledTime + 3f;
-            Debug.Log("SKYWORTH_HEADTRACK source=" + source + " rotation=" + head.localRotation.eulerAngles);
+            LogDiagnostic("SKYWORTH_HEADTRACK source=" + source + " rotation=" + head.localRotation.eulerAngles);
         }
     }
 
@@ -409,7 +415,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
             var minMs = frameDeltaMin * 1000f;
             var maxMs = frameDeltaMax * 1000f;
             var fps = frameSamples / Mathf.Max(frameDeltaSum, 0.0001f);
-            Debug.Log(
+            LogDiagnostic(
                 "SKYWORTH_FRAME_STATS fps=" + fps.ToString("F1") +
                 " avgMs=" + averageMs.ToString("F2") +
                 " minMs=" + minMs.ToString("F2") +
@@ -422,7 +428,7 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         if (poseSamples > 0)
         {
             var averagePoseAngle = poseAngleSum / Mathf.Max(poseSamples - 1, 1);
-            Debug.Log(
+            LogDiagnostic(
                 "SKYWORTH_POSE_STATS source=" + lastPoseSource +
                 " samples=" + poseSamples +
                 " avgDeg=" + averagePoseAngle.ToString("F3") +
@@ -509,6 +515,14 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
     private static Quaternion GyroToUnity(Quaternion q)
     {
         return new Quaternion(q.x, q.y, -q.z, -q.w);
+    }
+
+    private static void LogDiagnostic(string message)
+    {
+        if (DiagnosticsEnabled)
+        {
+            Debug.Log(message);
+        }
     }
 
     private bool StartAndroidHeadTracker()
