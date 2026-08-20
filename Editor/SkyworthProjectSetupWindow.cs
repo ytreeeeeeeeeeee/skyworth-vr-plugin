@@ -63,8 +63,6 @@ public sealed class SkyworthProjectSetupWindow : EditorWindow
         DrawStatus("Graphics API: OpenGLES3", SkyworthProjectSettings.IsGraphicsApiRecommended);
         DrawStatus("Multithreaded Rendering: Off", SkyworthProjectSettings.IsMobileMtRenderingRecommended);
         DrawStatus("Graphics Jobs: Off", SkyworthProjectSettings.IsGraphicsJobsRecommended);
-        DrawStatus("Layer: SkyworthLeftEye", SkyworthProjectSettings.HasLeftEyeLayer);
-        DrawStatus("Layer: SkyworthRightEye", SkyworthProjectSettings.HasRightEyeLayer);
 
         EditorGUILayout.Space();
 
@@ -102,9 +100,6 @@ public sealed class SkyworthProjectSetupWindow : EditorWindow
 
 internal static class SkyworthProjectSettings
 {
-    private const string LeftEyeLayerName = "SkyworthLeftEye";
-    private const string RightEyeLayerName = "SkyworthRightEye";
-
     public static bool IsAndroidBuildTarget =>
         EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android;
 
@@ -136,12 +131,6 @@ internal static class SkyworthProjectSettings
     public static bool IsGraphicsJobsRecommended =>
         GetGraphicsJobsForPlatform() != true;
 
-    public static bool HasLeftEyeLayer =>
-        HasLayer(LeftEyeLayerName);
-
-    public static bool HasRightEyeLayer =>
-        HasLayer(RightEyeLayerName);
-
     public static bool IsRecommended =>
         IsAndroidBuildTarget &&
         IsInputHandlingRecommended &&
@@ -152,9 +141,7 @@ internal static class SkyworthProjectSettings
         IsArchitectureRecommended &&
         IsGraphicsApiRecommended &&
         IsMobileMtRenderingRecommended &&
-        IsGraphicsJobsRecommended &&
-        HasLeftEyeLayer &&
-        HasRightEyeLayer;
+        IsGraphicsJobsRecommended;
 
     public static void ApplyRecommended()
     {
@@ -173,8 +160,6 @@ internal static class SkyworthProjectSettings
         PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new[] { GraphicsDeviceType.OpenGLES3 });
         SetGraphicsJobsForPlatform(false);
         SetMobileMtRendering(false);
-        EnsureLayer(LeftEyeLayerName);
-        EnsureLayer(RightEyeLayerName);
 
         AssetDatabase.SaveAssets();
         Debug.Log("SKYWORTH_SETUP Applied recommended project settings.");
@@ -236,57 +221,6 @@ internal static class SkyworthProjectSettings
         return AssetDatabase
             .LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset")
             .FirstOrDefault(asset => asset != null && asset.GetType().Name == "PlayerSettings");
-    }
-
-    private static bool HasLayer(string layerName)
-    {
-        return LayerMask.NameToLayer(layerName) >= 0;
-    }
-
-    private static void EnsureLayer(string layerName)
-    {
-        if (HasLayer(layerName))
-        {
-            return;
-        }
-
-        var tagManager = LoadTagManagerObject();
-        if (tagManager == null)
-        {
-            Debug.LogWarning("SKYWORTH_SETUP ProjectSettings/TagManager.asset was not found.");
-            return;
-        }
-
-        var serialized = new SerializedObject(tagManager);
-        var layers = serialized.FindProperty("layers");
-        if (layers == null || !layers.isArray)
-        {
-            Debug.LogWarning("SKYWORTH_SETUP TagManager layers property was not found.");
-            return;
-        }
-
-        for (var i = 8; i < layers.arraySize; i++)
-        {
-            var layer = layers.GetArrayElementAtIndex(i);
-            if (!string.IsNullOrEmpty(layer.stringValue))
-            {
-                continue;
-            }
-
-            layer.stringValue = layerName;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-            Debug.Log("SKYWORTH_SETUP Added layer " + layerName + " at slot " + i + ".");
-            return;
-        }
-
-        Debug.LogWarning("SKYWORTH_SETUP Could not add layer " + layerName + ": no free user layer slots.");
-    }
-
-    private static UnityEngine.Object LoadTagManagerObject()
-    {
-        return AssetDatabase
-            .LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")
-            .FirstOrDefault(asset => asset != null && asset.GetType().Name == "TagManager");
     }
 
     private static bool? GetGraphicsJobsForPlatform()

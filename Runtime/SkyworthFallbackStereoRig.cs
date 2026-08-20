@@ -5,8 +5,6 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
 {
     private const bool DiagnosticMonoRender = false;
     private const bool DiagnosticsEnabled = false;
-    private const string LeftEyeLayerName = "SkyworthLeftEye";
-    private const string RightEyeLayerName = "SkyworthRightEye";
 #if UNITY_EDITOR
     private const float EditorMouseSensitivity = 2.5f;
     private const float EditorMouseMinPitch = -85f;
@@ -464,7 +462,6 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
         var eye = eyeObject.AddComponent<Camera>();
         eye.CopyFrom(source);
         eye.rect = rect;
-        eye.cullingMask |= GetEyeAdditionalCullingMask(eyeName);
         eye.stereoTargetEye = StereoTargetEyeMask.None;
         eye.enabled = true;
         eyeObject.AddComponent<EyePoseUpdater>().Initialize(this);
@@ -479,28 +476,6 @@ public sealed class SkyworthFallbackStereoRig : MonoBehaviour
     private static SkyworthEye GetEye(string eyeName)
     {
         return eyeName == "Right" ? SkyworthEye.Right : SkyworthEye.Left;
-    }
-
-    private int GetEyeAdditionalCullingMask(string eyeName)
-    {
-        if (eyeName == "Left" || eyeName == "Mono")
-        {
-            return GetLayerMask(LeftEyeLayerName);
-        }
-
-        return GetLayerMask(RightEyeLayerName);
-    }
-
-    private static int GetLayerMask(string layerName)
-    {
-        var layer = LayerMask.NameToLayer(layerName);
-        if (layer < 0)
-        {
-            Debug.LogWarning("SKYWORTH_FALLBACK Layer '" + layerName + "' was not found. Eye-only objects on this layer will not be rendered.");
-            return 0;
-        }
-
-        return 1 << layer;
     }
 
     private static void DisableAudioListener(Camera source)
