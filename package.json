@@ -1,6 +1,6 @@
 {
   "name": "com.ytreeeeeeeeeeee.skyworth-vr-plugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "Skyworth VR Plugin",
   "description": "Unity Android plugin for Skyworth S801-like VR devices.",
   "unity": "2021.3",
