@@ -1,0 +1,156 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version to write to package.json, for example 0.1.1"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark the GitHub release as a prerelease"
+        required: true
+        default: false
+        type: boolean
+      draft:
+        description: "Create the GitHub release as a draft"
+        required: true
+        default: false
+        type: boolean
+      release_notes:
+        description: "Release notes. Leave empty to use the latest commit messages."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Update package.json and create release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
+
+      - name: Validate version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$'; then
+            echo "Version must look like 0.1.1 or 0.1.1-beta.1"
+            exit 1
+          fi
+
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists"
+            exit 1
+          fi
+
+      - name: Prepare release notes
+        env:
+          VERSION: ${{ inputs.version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          if [ -n "$RELEASE_NOTES" ]; then
+            printf '%s\n' "$RELEASE_NOTES" > release-notes.md
+          else
+            previous_tag="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+            if [ -n "$previous_tag" ]; then
+              git log "$previous_tag"..HEAD --pretty=format:'- %s' > release-notes.md
+            else
+              git log --pretty=format:'- %s' > release-notes.md
+            fi
+
+            if [ ! -s release-notes.md ]; then
+              printf '%s\n' "- Release v$VERSION." > release-notes.md
+            fi
+          fi
+
+      - name: Update package.json and changelog
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const version = process.env.VERSION;
+
+          const packagePath = "package.json";
+          const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+          packageJson.version = version;
+          fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2) + "\n");
+
+          const changelogPath = "CHANGELOG.md";
+          const notes = fs.readFileSync("release-notes.md", "utf8").trim();
+          const changelog = fs.existsSync(changelogPath)
+            ? fs.readFileSync(changelogPath, "utf8").trimEnd()
+            : "# Changelog";
+          const section = `## ${version}\n\n${notes || `- Release v${version}.`}`;
+
+          if (new RegExp(`^##\\s+${version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "m").test(changelog)) {
+            throw new Error(`CHANGELOG.md already contains version ${version}`);
+          }
+
+          if (changelog.startsWith("# Changelog")) {
+            const lines = changelog.split(/\r?\n/);
+            const title = lines.shift();
+            const rest = lines.join("\n").trim();
+            fs.writeFileSync(
+              changelogPath,
+              `${title}\n\n${section}${rest ? `\n\n${rest}` : ""}\n`
+            );
+          } else {
+            fs.writeFileSync(changelogPath, `${section}\n\n${changelog}\n`);
+          }
+          NODE
+
+      - name: Commit package.json and changelog
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if git diff --quiet -- package.json CHANGELOG.md; then
+            echo "package.json and CHANGELOG.md are unchanged"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json CHANGELOG.md
+          git commit -m "chore: release v$VERSION"
+
+      - name: Tag release commit
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git tag "v$VERSION"
+
+      - name: Push package.json update and tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git push origin "HEAD:${{ github.ref_name }}"
+          git push origin "v$VERSION"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          args=()
+
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
+            args+=(--prerelease)
+          fi
+
+          if [ "${{ inputs.draft }}" = "true" ]; then
+            args+=(--draft)
+          fi
+
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes-file release-notes.md \
+            "${args[@]}"
